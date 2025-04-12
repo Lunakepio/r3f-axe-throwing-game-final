@@ -16,13 +16,14 @@ import {
   vec3,
 } from "@react-three/rapier";
 import { useCallback, useEffect, useRef, useState } from "react";
-import { degToRad, randFloat } from "three/src/math/MathUtils.js";
+import { degToRad, randFloat, lerp } from "three/src/math/MathUtils.js";
 import { VFXEmitter, VFXParticles } from "wawa-vfx";
 import { AUDIOS } from "../App";
 import { balloonMaterials, useGame } from "../hooks/useGame";
 import { GradientSky } from "./GradientSky";
 import { Perf } from "r3f-perf";
 import { Balloons } from "./Balloons";
+import { Vector3 } from "three";
 
 export const Experience = () => {
   const { nodes } = useGLTF("models/Axe Small Applied.glb");
@@ -361,17 +362,29 @@ const AxeController = ({ ...props }) => {
 
   const sfxThrow = useRef();
   const sfxHit = useRef();
+  
+  const tempVec = new Vector3()
 
-  useFrame(({ pointer, viewport }, delta) => {
+  useFrame(({ camera, pointer, viewport }, delta) => {
     const axeLaunched = useGame.getState().axeLaunched;
+    const throws = useGame.getState().throws
     if (!axeLaunched && rb.current) {
+      tempVec.set(pointer.x, pointer.y, 0.5);
+      tempVec.unproject(camera);
+      
+      const { x, y, z } = rb.current.translation()
+  
       rb.current.setRotation(quat(0, 0, 0, 1), true);
-      rb.current.setTranslation({
-        x: 1,
-        y: -0.2 + pointer.y * 0.5,
-        z: pointer.x * 0.5,
-      });
 
+      if(throws > 0){
+        rb.current.setTranslation({
+          x: lerp(x, tempVec.x, 4 * delta),
+          y: lerp(y, tempVec.y, 4 * delta),
+          z: lerp(z, tempVec.z, 4 * delta),
+        });
+        
+      }
+  
       rb.current.setLinvel({ x: 0, y: 0, z: 0 });
       rb.current.setAngvel({ x: 0, y: 0, z: 0 });
     }
